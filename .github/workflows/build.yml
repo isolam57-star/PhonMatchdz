@@ -1,4 +1,4 @@
-Entername: Build PhoneMatch DZ APK
+name: Build PhoneMatch DZ APK
 
 on:
   workflow_dispatch:
