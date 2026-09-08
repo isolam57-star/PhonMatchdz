@@ -1,0 +1,146 @@
+{
+  "generated_at": "2026-09-08T10:06:55.583830+00:00",
+  "currency": "DZD",
+  "source_policy": "Public Algerian listings; prices are references, not guarantees.",
+  "phones": {
+    "Samsung Galaxy A07": {
+      "price": 28000,
+      "offers": [],
+      "updated_at": "2026-09-08T10:06:55.583830+00:00",
+      "status": "reference",
+      "source": "Webstar-Electro"
+    },
+    "Samsung Galaxy A16 4G": {
+      "price": 29500,
+      "offers": [],
+      "updated_at": "2026-09-08T10:06:55.583830+00:00",
+      "status": "reference",
+      "source": "Webstar-Electro"
+    },
+    "Samsung Galaxy A57 5G": {
+      "price": 78000,
+      "offers": [],
+      "updated_at": "2026-09-08T10:06:55.583830+00:00",
+      "status": "reference",
+      "source": "Ouedkniss"
+    },
+    "Xiaomi Redmi Note 14": {
+      "price": 42990,
+      "offers": [],
+      "updated_at": "2026-09-08T10:06:55.583830+00:00",
+      "status": "reference",
+      "source": "Ouedkniss"
+    },
+    "Realme C85": {
+      "price": 42000,
+      "offers": [],
+      "updated_at": "2026-09-08T10:06:55.583830+00:00",
+      "status": "reference",
+      "source": "Webstar-Electro"
+    },
+    "Honor X9d 5G": {
+      "price": 77990,
+      "offers": [],
+      "updated_at": "2026-09-08T10:06:55.583830+00:00",
+      "status": "reference",
+      "source": "Ouedkniss"
+    },
+    "iPhone 13": {
+      "price": 76000,
+      "offers": [],
+      "updated_at": "2026-09-08T10:06:55.583830+00:00",
+      "status": "reference",
+      "source": "Webstar-Electro"
+    },
+    "Samsung Galaxy A26 5G": {
+      "price": null,
+      "offers": [],
+      "updated_at": null,
+      "status": "waiting"
+    },
+    "Samsung Galaxy A36 5G": {
+      "price": null,
+      "offers": [],
+      "updated_at": null,
+      "status": "waiting"
+    },
+    "Samsung Galaxy A37 5G": {
+      "price": null,
+      "offers": [],
+      "updated_at": null,
+      "status": "waiting"
+    },
+    "Samsung Galaxy S24": {
+      "price": null,
+      "offers": [],
+      "updated_at": null,
+      "status": "waiting"
+    },
+    "Samsung Galaxy S25": {
+      "price": null,
+      "offers": [],
+      "updated_at": null,
+      "status": "waiting"
+    },
+    "Samsung Galaxy S25 Ultra": {
+      "price": null,
+      "offers": [],
+      "updated_at": null,
+      "status": "waiting"
+    },
+    "Xiaomi Redmi A5": {
+      "price": null,
+      "offers": [],
+      "updated_at": null,
+      "status": "waiting"
+    },
+    "Xiaomi Redmi Note 14 Pro+ 5G": {
+      "price": null,
+      "offers": [],
+      "updated_at": null,
+      "status": "waiting"
+    },
+    "Xiaomi Redmi Note 15 Pro 5G": {
+      "price": null,
+      "offers": [],
+      "updated_at": null,
+      "status": "waiting"
+    },
+    "POCO M8 5G": {
+      "price": null,
+      "offers": [],
+      "updated_at": null,
+      "status": "waiting"
+    },
+    "POCO F7": {
+      "price": null,
+      "offers": [],
+      "updated_at": null,
+      "status": "waiting"
+    },
+    "Realme 12X 5G": {
+      "price": null,
+      "offers": [],
+      "updated_at": null,
+      "status": "waiting"
+    },
+    "Honor X8d": {
+      "price": null,
+      "offers": [],
+      "updated_at": null,
+      "status": "waiting"
+    },
+    "Infinix Smart 10": {
+      "price": null,
+      "offers": [],
+      "updated_at": null,
+      "status": "waiting"
+    },
+    "Nubia Neo 3 5G": {
+      "price": null,
+      "offers": [],
+      "updated_at": null,
+      "status": "waiting"
+    }
+  }
+}

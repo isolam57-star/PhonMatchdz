@@ -1,11 +1,80 @@
-const $=x=>document.getElementById(x),money=n=>n.toLocaleString('fr-FR')+' دج';const budget=$('budget'),use=$('use'),brand=$('brand'),network=$('network');
+const $=x=>document.getElementById(x);
+const money=n=>n==null?'غير متوفر':Number(n).toLocaleString('fr-FR')+' دج';
+let PRICE_DB={phones:{},generated_at:null};
+
+async function loadPrices(){
+  try{
+    const r=await fetch('prices.json?ts='+Date.now(),{cache:'no-store'});
+    if(r.ok) PRICE_DB=await r.json();
+  }catch(e){ console.warn('Price DB unavailable; using base prices.',e); }
+}
+function phoneData(p){
+  const x=PRICE_DB.phones?.[p[0]];
+  return {...p, livePrice:(x&&x.price!=null)?x.price:p[2], priceInfo:x||null};
+}
+const budget=$('budget'),use=$('use'),brand=$('brand'),network=$('network');
 [...new Set(PHONES.map(p=>p[1]))].sort().forEach(x=>brand.insertAdjacentHTML('beforeend',`<option>${x}</option>`));
-function score(p){let b=+budget.value,s=p[2]<=b?35:Math.max(0,35-(p[2]-b)/b*35);s+=p[11].includes(use.value)?30:8;s+=p[10]*.15;s+=p[3]/12*6;s+=p[4]/512*4;s+=p[5]/7000*5;if(use.value==='camera')s+=p[6]/200*5;if(use.value==='gaming')s+=p[8]/144*5;return Math.min(99,Math.round(s))}
-function card(p,match){return `<article class="card"><h3>${p[0]}</h3><small>${p[1]} • ${p[9]}</small><div class="price">${money(p[2])}</div><div class="stats"><div class="stat">RAM <b>${p[3]} GB</b></div><div class="stat">تخزين <b>${p[4]} GB</b></div><div class="stat">بطارية <b>${p[5]} mAh</b></div><div class="stat">كاميرا <b>${p[6]} MP</b></div><div class="stat">شاشة <b>${p[7]}" / ${p[8]}Hz</b></div><div class="stat">أداء <b>${p[10]}/100</b></div></div>${match?`<div class="match">مطابقة ${score(p)}%<div class="bar"><i style="width:${score(p)}%"></i></div></div>`:''}<div class="actions"><button class="small" onclick="pick('${p[0]}',1)">مقارنة 1</button><button class="small" onclick="pick('${p[0]}',2)">مقارنة 2</button></div></article>`}
+
+function score(p){
+  let b=+budget.value, price=phoneData(p).livePrice;
+  let s=price==null?0:(price<=b?35:Math.max(0,35-(price-b)/b*35));
+  s+=p[11].includes(use.value)?30:8;
+  s+=p[10]*.15+p[3]/12*6+p[4]/512*4+p[5]/7000*5;
+  if(use.value==='camera')s+=p[6]/200*5;
+  if(use.value==='gaming')s+=p[8]/144*5;
+  return Math.min(99,Math.round(s));
+}
+function offerHtml(info){
+  if(!info) return '';
+  const offers=(info.offers||[]).slice(0,3);
+  const source=info.source?`<span>${info.source}</span>`:'';
+  if(!offers.length) return `<div class="offer-meta">آخر تحديث: ${info.updated_at?new Date(info.updated_at).toLocaleString('ar-DZ'):'مرجعي'} ${source}</div>`;
+  return `<div class="offers"><b>أفضل العروض:</b>${offers.map(o=>`<a href="${o.url}" target="_blank" rel="noopener">${money(o.price)} — ${o.source}</a>`).join('')}</div>`;
+}
+function card(raw,match){
+  const p=phoneData(raw), price=p.livePrice;
+  const info=p.priceInfo;
+  return `<article class="card">
+    <div class="live">${info?.status==='live'?'🟢 سعر محدث':'⚪ سعر مرجعي'}</div>
+    <h3>${p[0]}</h3><small>${p[1]} • ${p[9]}</small>
+    <div class="price">${money(price)}</div>
+    <div class="stats">
+      <div class="stat">RAM <b>${p[3]} GB</b></div><div class="stat">تخزين <b>${p[4]} GB</b></div>
+      <div class="stat">بطارية <b>${p[5]} mAh</b></div><div class="stat">كاميرا <b>${p[6]} MP</b></div>
+      <div class="stat">شاشة <b>${p[7]}" / ${p[8]}Hz</b></div><div class="stat">أداء <b>${p[10]}/100</b></div>
+    </div>
+    ${match?`<div class="match">مطابقة ${score(raw)}%<div class="bar"><i style="width:${score(raw)}%"></i></div></div>`:''}
+    ${offerHtml(info)}
+    <div class="actions"><button class="small" onclick="pick('${p[0]}',1)">مقارنة 1</button><button class="small" onclick="pick('${p[0]}',2)">مقارنة 2</button></div>
+  </article>`;
+}
 function list(){return PHONES.filter(p=>(brand.value==='all'||p[1]===brand.value)&&(network.value==='all'||p[9]===network.value))}
-function render(){let a=list().sort((x,y)=>score(y)-score(x));$('bt').textContent=money(+budget.value);$('count').textContent=`(${a.length})`;$('cards').innerHTML=a.slice(0,6).map(p=>card(p,true)).join('')}
-function all(){let q=$('search').value.toLowerCase();$('all').innerHTML=PHONES.filter(p=>(p[0]+' '+p[1]).toLowerCase().includes(q)).map(p=>card(p,false)).join('')}
-function initCompare(){['c1','c2'].forEach(id=>$(id).innerHTML=PHONES.map(p=>`<option>${p[0]}</option>`).join(''));$('c2').selectedIndex=1;compare()}
-function compare(){let a=PHONES.find(p=>p[0]===$('c1').value),b=PHONES.find(p=>p[0]===$('c2').value);if(!a||!b)return;let r=[['السعر',money(a[2]),money(b[2])],['RAM',a[3]+' GB',b[3]+' GB'],['التخزين',a[4]+' GB',b[4]+' GB'],['البطارية',a[5]+' mAh',b[5]+' mAh'],['الكاميرا',a[6]+' MP',b[6]+' MP'],['الشاشة',a[7]+'" / '+a[8]+'Hz',b[7]+'" / '+b[8]+'Hz'],['الشبكة',a[9],b[9]],['الأداء',a[10]+'/100',b[10]+'/100']];$('table').innerHTML='<div class="table"><table><tr><th>المواصفة</th><th>'+a[0]+'</th><th>'+b[0]+'</th></tr>'+r.map(x=>`<tr><td><b>${x[0]}</b></td><td>${x[1]}</td><td>${x[2]}</td></tr>`).join('')+'</table></div>'}
+function render(){
+  let a=list().sort((x,y)=>score(y)-score(x));
+  $('bt').textContent=money(+budget.value);
+  $('count').textContent=`(${a.length})`;
+  $('cards').innerHTML=a.slice(0,6).map(p=>card(p,true)).join('');
+  $('dbStatus').textContent=PRICE_DB.generated_at
+    ? `آخر تحديث تلقائي: ${new Date(PRICE_DB.generated_at).toLocaleString('ar-DZ')}`
+    : 'الأسعار المرجعية فقط';
+}
+function all(){
+  let q=$('search').value.toLowerCase();
+  $('all').innerHTML=PHONES.filter(p=>(p[0]+' '+p[1]).toLowerCase().includes(q)).map(p=>card(p,false)).join('');
+}
+function initCompare(){
+  ['c1','c2'].forEach(id=>$(id).innerHTML=PHONES.map(p=>`<option>${p[0]}</option>`).join(''));
+  $('c2').selectedIndex=1; compare();
+}
+function compare(){
+  let a=PHONES.find(p=>p[0]===$('c1').value),b=PHONES.find(p=>p[0]===$('c2').value); if(!a||!b)return;
+  a=phoneData(a);b=phoneData(b);
+  let r=[['السعر',money(a.livePrice),money(b.livePrice)],['RAM',a[3]+' GB',b[3]+' GB'],['التخزين',a[4]+' GB',b[4]+' GB'],['البطارية',a[5]+' mAh',b[5]+' mAh'],['الكاميرا',a[6]+' MP',b[6]+' MP'],['الشاشة',a[7]+'" / '+a[8]+'Hz',b[7]+'" / '+b[8]+'Hz'],['الشبكة',a[9],b[9]],['الأداء',a[10]+'/100',b[10]+'/100']];
+  $('table').innerHTML='<div class="table"><table><tr><th>المواصفة</th><th>'+a[0]+'</th><th>'+b[0]+'</th></tr>'+r.map(x=>`<tr><td><b>${x[0]}</b></td><td>${x[1]}</td><td>${x[2]}</td></tr>`).join('')+'</table></div>';
+}
 function pick(n,k){$(k===1?'c1':'c2').value=n;compare();location.hash='compare'}
-budget.oninput=render;use.onchange=render;brand.onchange=render;network.onchange=render;$('search').oninput=all;$('c1').onchange=compare;$('c2').onchange=compare;$('match').onclick=()=>{render();location.hash='cards'};initCompare();render();all();
+budget.oninput=render;use.onchange=render;brand.onchange=render;network.onchange=render;
+$('search').oninput=all;$('c1').onchange=compare;$('c2').onchange=compare;
+$('match').onclick=()=>{render();location.hash='cards'};
+
+(async()=>{await loadPrices();initCompare();render();all();})();
