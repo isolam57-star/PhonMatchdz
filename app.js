@@ -1,16 +1,11 @@
-const phones=[
-["Samsung Galaxy A55","Samsung",72000,8,256,5000,50,82,["camera","daily","work"]],
-["Xiaomi Redmi Note 13 Pro","Xiaomi",59000,8,256,5000,200,78,["camera","gaming","daily"]],
-["POCO X6 Pro","POCO",68000,12,512,5000,64,95,["gaming","performance"]],
-["iPhone 13","Apple",95000,4,128,3240,12,90,["camera","daily","work"]],
-["Samsung Galaxy A35","Samsung",56000,8,256,5000,50,74,["daily","camera","work"]],
-["Infinix GT 20 Pro","Infinix",62000,12,256,5000,108,91,["gaming","performance"]],
-["Honor X8b","Honor",43000,8,256,4500,108,67,["daily","camera","work"]],
-["Tecno Camon 30","Tecno",47000,8,256,5000,50,70,["camera","daily"]]
-];
-const names=["استعمال عادي","ألعاب","كاميرا","دراسة/عمل","بطارية"], tags=["daily","gaming","camera","work","battery"]; let usage=0;
-const money=n=>n.toLocaleString("fr-FR")+" دج";
-document.getElementById("uses").innerHTML=names.map((x,i)=>`<button class="chip ${i==0?"active":""}" onclick="usage=${i};document.querySelectorAll('.chip').forEach((b,j)=>b.classList.toggle('active',j==${i}));render()">${x}</button>`).join("");
-document.getElementById("budget").oninput=render;
-function score(p){let b=+budget.value,s=p[2]<=b?30:18;s+=p[8].includes(tags[usage])?30:10;s+=p[7]*.15;s+=p[5]/5000*12;s+=p[3]/12*8;s+=p[4]/512*5;if(usage==2)s+=p[6]/200*15;return Math.min(99,Math.round(s))}
-function render(){let b=+budget.value;document.getElementById("bt").textContent=money(b);let a=phones.filter(p=>p[2]<=b*1.12).sort((x,y)=>score(y)-score(x)).slice(0,5);document.getElementById("results").innerHTML=a.map(p=>`<article class="card"><h3>${p[0]}</h3><div>${p[1]}</div><p class="price">${money(p[2])}</p><div class="stats"><div class="stat">RAM: <b>${p[3]} GB</b></div><div class="stat">تخزين: <b>${p[4]} GB</b></div><div class="stat">بطارية: <b>${p[5]} mAh</b></div><div class="stat">كاميرا: <b>${p[6]} MP</b></div><div class="stat">أداء: <b>${p[7]}/100</b></div><div class="stat">التوافق: <b>${score(p)}%</b></div></div></article>`).join("")||"<p>لا يوجد هاتف مناسب لهذه الميزانية.</p>"}render();
+const $=x=>document.getElementById(x),money=n=>n.toLocaleString('fr-FR')+' دج';const budget=$('budget'),use=$('use'),brand=$('brand'),network=$('network');
+[...new Set(PHONES.map(p=>p[1]))].sort().forEach(x=>brand.insertAdjacentHTML('beforeend',`<option>${x}</option>`));
+function score(p){let b=+budget.value,s=p[2]<=b?35:Math.max(0,35-(p[2]-b)/b*35);s+=p[11].includes(use.value)?30:8;s+=p[10]*.15;s+=p[3]/12*6;s+=p[4]/512*4;s+=p[5]/7000*5;if(use.value==='camera')s+=p[6]/200*5;if(use.value==='gaming')s+=p[8]/144*5;return Math.min(99,Math.round(s))}
+function card(p,match){return `<article class="card"><h3>${p[0]}</h3><small>${p[1]} • ${p[9]}</small><div class="price">${money(p[2])}</div><div class="stats"><div class="stat">RAM <b>${p[3]} GB</b></div><div class="stat">تخزين <b>${p[4]} GB</b></div><div class="stat">بطارية <b>${p[5]} mAh</b></div><div class="stat">كاميرا <b>${p[6]} MP</b></div><div class="stat">شاشة <b>${p[7]}" / ${p[8]}Hz</b></div><div class="stat">أداء <b>${p[10]}/100</b></div></div>${match?`<div class="match">مطابقة ${score(p)}%<div class="bar"><i style="width:${score(p)}%"></i></div></div>`:''}<div class="actions"><button class="small" onclick="pick('${p[0]}',1)">مقارنة 1</button><button class="small" onclick="pick('${p[0]}',2)">مقارنة 2</button></div></article>`}
+function list(){return PHONES.filter(p=>(brand.value==='all'||p[1]===brand.value)&&(network.value==='all'||p[9]===network.value))}
+function render(){let a=list().sort((x,y)=>score(y)-score(x));$('bt').textContent=money(+budget.value);$('count').textContent=`(${a.length})`;$('cards').innerHTML=a.slice(0,6).map(p=>card(p,true)).join('')}
+function all(){let q=$('search').value.toLowerCase();$('all').innerHTML=PHONES.filter(p=>(p[0]+' '+p[1]).toLowerCase().includes(q)).map(p=>card(p,false)).join('')}
+function initCompare(){['c1','c2'].forEach(id=>$(id).innerHTML=PHONES.map(p=>`<option>${p[0]}</option>`).join(''));$('c2').selectedIndex=1;compare()}
+function compare(){let a=PHONES.find(p=>p[0]===$('c1').value),b=PHONES.find(p=>p[0]===$('c2').value);if(!a||!b)return;let r=[['السعر',money(a[2]),money(b[2])],['RAM',a[3]+' GB',b[3]+' GB'],['التخزين',a[4]+' GB',b[4]+' GB'],['البطارية',a[5]+' mAh',b[5]+' mAh'],['الكاميرا',a[6]+' MP',b[6]+' MP'],['الشاشة',a[7]+'" / '+a[8]+'Hz',b[7]+'" / '+b[8]+'Hz'],['الشبكة',a[9],b[9]],['الأداء',a[10]+'/100',b[10]+'/100']];$('table').innerHTML='<div class="table"><table><tr><th>المواصفة</th><th>'+a[0]+'</th><th>'+b[0]+'</th></tr>'+r.map(x=>`<tr><td><b>${x[0]}</b></td><td>${x[1]}</td><td>${x[2]}</td></tr>`).join('')+'</table></div>'}
+function pick(n,k){$(k===1?'c1':'c2').value=n;compare();location.hash='compare'}
+budget.oninput=render;use.onchange=render;brand.onchange=render;network.onchange=render;$('search').oninput=all;$('c1').onchange=compare;$('c2').onchange=compare;$('match').onclick=()=>{render();location.hash='cards'};initCompare();render();all();
