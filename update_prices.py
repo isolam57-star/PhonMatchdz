@@ -13,7 +13,7 @@ This is intentionally conservative: it does not overwrite a price when no
 plausible match is found. It also records source URL and update time.
 """
 from __future__ import annotations
-import json, re, time, unicodedata
+import json, re, time, unicodedata, os
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote_plus
@@ -165,6 +165,49 @@ def load_old():
         "phones": {}
     }
 
+def push_to_supabase(result):
+    """
+    Publish the latest offers to Supabase.
+    Required GitHub Actions secrets:
+      SUPABASE_URL
+      SUPABASE_SERVICE_ROLE_KEY
+    """
+    url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not url or not key:
+        print("[INFO] Supabase secrets not set; keeping prices.json only.")
+        return
+
+    rows = []
+    for phone_name, info in result.get("phones", {}).items():
+        for offer in info.get("offers", []):
+            rows.append({
+                "phone_name": phone_name,
+                "store_name": offer.get("source", "Unknown"),
+                "price_dzd": int(offer["price"]),
+                "product_url": offer.get("url"),
+                "stock_status": "unknown",
+                "source_type": "public_listing",
+                "confidence": offer.get("confidence", 0.5),
+                "observed_at": info.get("updated_at") or datetime.now(timezone.utc).isoformat(),
+            })
+
+    if not rows:
+        print("[INFO] No live offers to publish.")
+        return
+
+    # Insert a fresh observation set. Historical records remain available.
+    endpoint = f"{url}/rest/v1/phone_offers"
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+    r = requests.post(endpoint, headers=headers, json=rows, timeout=30)
+    r.raise_for_status()
+    print(f"[INFO] Published {len(rows)} offers to Supabase.")
+
 def main():
     old = load_old()
     now = datetime.now(timezone.utc).isoformat()
@@ -211,6 +254,7 @@ def main():
 
     OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Wrote {OUT} with {len(result['phones'])} phones.")
+    push_to_supabase(result)
 
 if __name__ == "__main__":
     main()

@@ -1,12 +1,50 @@
+// PhoneMatch DZ — Phase 3.5
+// Public/anon Supabase key is safe to expose only with RLS enabled.
+// Do NOT put SUPABASE_SERVICE_ROLE_KEY here.
+const SUPABASE_URL = "https://slpyzzjsgqdsebfodkua.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_7MZ4Hpp0xNWBn0ZamjafFw_V50v0nSh";
+
 const $=x=>document.getElementById(x);
 const money=n=>n==null?'غير متوفر':Number(n).toLocaleString('fr-FR')+' دج';
 let PRICE_DB={phones:{},generated_at:null};
 
 async function loadPrices(){
+  // 1) Read live offers from Supabase.
+  if(!SUPABASE_URL.startsWith("YOUR_") && !SUPABASE_ANON_KEY.startsWith("YOUR_")){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/phone_best_offers?select=*`,{
+        headers:{apikey:SUPABASE_ANON_KEY,Authorization:`Bearer ${SUPABASE_ANON_KEY}`},
+        cache:'no-store'
+      });
+      if(r.ok){
+        const rows=await r.json();
+        const phones={};
+        rows.forEach(o=>{
+          phones[o.phone_name]={
+            price:o.price_dzd,
+            offers:[{
+              price:o.price_dzd,
+              source:o.store_name,
+              url:o.product_url,
+              confidence:o.confidence
+            }],
+            updated_at:o.observed_at,
+            status:"live"
+          };
+        });
+        if(Object.keys(phones).length){
+          PRICE_DB={phones,generated_at:new Date().toISOString(),source:"Supabase"};
+          return;
+        }
+      }
+    }catch(e){console.warn("Supabase unavailable",e);}
+  }
+
+  // 2) Safe fallback for the static GitHub Pages version.
   try{
     const r=await fetch('prices.json?ts='+Date.now(),{cache:'no-store'});
     if(r.ok) PRICE_DB=await r.json();
-  }catch(e){ console.warn('Price DB unavailable; using base prices.',e); }
+  }catch(e){console.warn('Price DB unavailable; using base prices.',e);}
 }
 function phoneData(p){
   const x=PRICE_DB.phones?.[p[0]];
