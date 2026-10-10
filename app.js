@@ -41,3 +41,62 @@ function renderFavorites(){const arr=PHONES.filter(p=>favorites.has(p[0]));$('fa
 [...new Set(PHONES.map(p=>p[1]))].sort().forEach(x=>{brand.insertAdjacentHTML('beforeend',`<option value="${esc(x)}">${esc(x)}</option>`);$('catalogBrand').insertAdjacentHTML('beforeend',`<option value="${esc(x)}">${esc(x)}</option>`);});
 budget.addEventListener('input',render);use.addEventListener('change',render);brand.addEventListener('change',render);network.addEventListener('change',render);$('sort').addEventListener('change',render);$('match').addEventListener('click',()=>{render();location.hash='cards';});$('search').addEventListener('input',renderCatalog);$('catalogBrand').addEventListener('change',renderCatalog);$('catalogNetwork').addEventListener('change',renderCatalog);$('c1').addEventListener('change',compare);$('c2').addEventListener('change',compare);
 (async()=>{await loadPrices();initCompare();render();renderCatalog();renderFavorites();})();
+
+// Phase 5 add-ons. Admin actions require a Supabase Auth session AND an admin_users row.
+const historyPhone=$('historyPhone'), offerPhone=$('offerPhone');
+function fillPhoneSelectors(){
+  const opts=PHONES.map(p=>`<option value="${esc(p[0])}">${esc(p[0])}</option>`).join('');
+  if(historyPhone)historyPhone.innerHTML=opts;
+  if(offerPhone)offerPhone.innerHTML=opts;
+}
+function apiHeaders(token){return {apikey:SUPABASE_ANON_KEY,Authorization:`Bearer ${token||SUPABASE_ANON_KEY}`,'Content-Type':'application/json'}}
+async function getRest(path, token){
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/${path}`,{headers:apiHeaders(token),cache:'no-store'});
+  if(!r.ok)throw new Error(`Supabase HTTP ${r.status}`); return r.json();
+}
+async function loadHistory(){
+  const phone=historyPhone?.value; const status=$('historyStatus'); if(!phone||!status)return;
+  status.className='status-banner';status.textContent='جارٍ تحميل السجل…';
+  try{
+    const q=`phone_price_history?select=phone_name,store_name,price_dzd,product_url,observed_at&phone_name=eq.${encodeURIComponent(phone)}&order=observed_at.desc&limit=80`;
+    const rows=await getRest(q);
+    const chart=$('historyChart'), table=$('historyTable'), stores=$('storeOffers');
+    if(!rows.length){chart.innerHTML='<div class="history-empty">لا توجد سجلات تاريخية لهذا الهاتف حتى الآن. ستظهر البيانات بعد تسجيل العروض.</div>';table.innerHTML='';stores.innerHTML='<div class="empty-state">لا توجد عروض مسجلة لهذا الهاتف.</div>';status.className='status-banner warn';status.textContent='لا توجد بيانات تاريخية بعد.';return;}
+    const ordered=[...rows].reverse(); const vals=ordered.map(x=>Number(x.price_dzd)).filter(x=>x>0);const max=Math.max(...vals),min=Math.min(...vals),range=max-min||1;
+    chart.innerHTML=ordered.map(x=>{const v=Number(x.price_dzd),h=26+((v-min)/range)*120;return `<div class="history-bar" title="${esc(x.store_name)} · ${money(v)}"><strong>${money(v)}</strong><div class="bar-fill" style="height:${h}px"></div><span>${new Date(x.observed_at).toLocaleDateString('ar-DZ')}</span></div>`}).join('');
+    table.innerHTML='<table><thead><tr><th>المتجر</th><th>السعر</th><th>تاريخ الرصد</th><th>الرابط</th></tr></thead><tbody>'+rows.map(x=>`<tr><td>${esc(x.store_name)}</td><td>${money(Number(x.price_dzd))}</td><td>${new Date(x.observed_at).toLocaleString('ar-DZ')}</td><td>${x.product_url?`<a href="${esc(x.product_url)}" target="_blank" rel="noopener noreferrer">فتح العرض</a>`:'—'}</td></tr>`).join('')+'</tbody></table>';
+    const latest=new Map(); rows.forEach(x=>{if(!latest.has(x.store_name))latest.set(x.store_name,x)});
+    const offers=[...latest.values()].sort((a,b)=>Number(a.price_dzd)-Number(b.price_dzd));
+    stores.innerHTML='<table><thead><tr><th>المتجر</th><th>أحدث سعر مسجل</th><th>تاريخ الرصد</th><th>الرابط</th></tr></thead><tbody>'+offers.map(x=>`<tr><td>${esc(x.store_name)}</td><td>${money(Number(x.price_dzd))}</td><td>${new Date(x.observed_at).toLocaleString('ar-DZ')}</td><td>${x.product_url?`<a href="${esc(x.product_url)}" target="_blank" rel="noopener noreferrer">فتح العرض</a>`:'—'}</td></tr>`).join('')+'</tbody></table>';
+    status.className='status-banner ok';status.textContent=`تم تحميل ${rows.length} سجل سعر. قد تختلف الأسعار الفعلية عن الأسعار المسجلة.`;
+  }catch(e){status.className='status-banner warn';status.textContent='تعذر تحميل سجل الأسعار. تحقق من إنشاء جدول phone_price_history وسياسات القراءة في Supabase.';console.warn(e)}
+}
+let sbClient=null;
+function setAdminMessage(msg,isError=false){const el=$('adminLoginStatus');if(el){el.textContent=msg;el.style.color=isError?'#dc2626':''}}
+async function initAdmin(){
+  if(!window.supabase?.createClient){setAdminMessage('تعذر تحميل مكتبة تسجيل الدخول. تحقق من الاتصال بالإنترنت.',true);return}
+  sbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  const {data:{session}}=await sbClient.auth.getSession(); if(session)await showAdminSession(session);
+  sbClient.auth.onAuthStateChange((_event,session)=>{if(session)showAdminSession(session);else{$('adminSignedOut').hidden=false;$('adminSignedIn').hidden=true;}});
+}
+async function showAdminSession(session){
+  try{
+    const {data,error}=await sbClient.from('admin_users').select('user_id').eq('user_id',session.user.id).maybeSingle();
+    if(error)throw error;
+    if(!data){await sbClient.auth.signOut();setAdminMessage('هذا الحساب ليس ضمن قائمة المديرين. أضف UID الصحيح إلى admin_users.',true);return}
+    $('adminSignedOut').hidden=true;$('adminSignedIn').hidden=false;$('adminIdentity').textContent=session.user.email||session.user.id;
+  }catch(e){console.warn(e);setAdminMessage('تعذر التحقق من صلاحية المدير. تحقق من سياسات RLS لجدول admin_users.',true)}
+}
+async function submitOffer(e){
+  e.preventDefault();const status=$('offerFormStatus');status.textContent='جارٍ الحفظ…';
+  try{
+    const {data:{session}}=await sbClient.auth.getSession();if(!session)throw new Error('سجّل الدخول أولًا.');
+    const phone_name=offerPhone.value,store_name=$('offerStore').value.trim(),price_dzd=Number($('offerPrice').value),product_url=$('offerUrl').value.trim()||null,wilaya=$('offerWilaya').value.trim()||null;
+    if(!phone_name||!store_name||!(price_dzd>0))throw new Error('أدخل الهاتف والمتجر وسعرًا صحيحًا.');
+    const payload={phone_name,store_name,price_dzd,product_url,wilaya,stock_status:'unknown',source_type:'admin_entry',confidence:1,observed_at:new Date().toISOString()};
+    const {error}=await sbClient.from('phone_offers').insert(payload);if(error)throw error;
+    const {error:histError}=await sbClient.from('phone_price_history').insert({phone_name,store_name,price_dzd,product_url,observed_at:payload.observed_at});if(histError)throw histError;
+    status.textContent='تم حفظ العرض وتسجيل السعر بنجاح.';$('offerForm').reset();await loadPrices();render();renderCatalog();await loadHistory();
+  }catch(e){status.textContent='لم يتم الحفظ: '+(e.message||'خطأ غير معروف');console.warn(e)}
+}
+if(historyPhone){fillPhoneSelectors();$('loadHistory').addEventListener('click',loadHistory);historyPhone.addEventListener('change',loadHistory);$('adminLogin').addEventListener('submit',async e=>{e.preventDefault();setAdminMessage('جارٍ تسجيل الدخول…');try{const {error}=await sbClient.auth.signInWithPassword({email:$('adminEmail').value.trim(),password:$('adminPassword').value});if(error)throw error;setAdminMessage('تم تسجيل الدخول.');}catch(err){setAdminMessage('تعذر تسجيل الدخول: تحقق من البريد وكلمة المرور وتأكيد البريد في Supabase.',true);console.warn(err)}});$('adminLogout').addEventListener('click',()=>sbClient?.auth.signOut());$('offerForm').addEventListener('submit',submitOffer);initAdmin();loadHistory();}
